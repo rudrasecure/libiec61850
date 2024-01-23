@@ -28,8 +28,37 @@ DataAttribute* toDataAttribute(ModelNode * MN)
 { return (DataAttribute*)MN;}
 DataObject* toDataObject(ModelNode * MN)
 { return (DataObject*)MN;}
+
+MmsValue* MmsConnection_readMultipleVariables(
+    MmsConnection self,
+    MmsError* mmsError,
+    const char* domainId,
+    PyObject *items
+){
+    if(!PyList_Check(items)){
+        PyErr_SetString(PyExc_ValueError, "items must be a list");
+        return nullptr;
+    }
+
+    LinkedList list = LinkedList_create();
+    for(int i = 0, length = PyList_Size(items); i < length; i++){
+        PyObject *item = PyList_GetItem(items, i);
+        if(PyUnicode_Check(item)){
+            const char* str = PyString_AsString(PyUnicode_AsUTF8String(item));
+            LinkedList_add(list, (void *) str);
+        }
+        else{
+            PyErr_SetString(PyExc_ValueError, "items must be a list of str");
+            return nullptr;
+        }
+    }
+
+    return MmsConnection_readMultipleVariables(self, mmsError, domainId, list);
+}
 %}
+
 %apply int *OUTPUT {IedClientError* error};
+%apply int *OUTPUT {MmsError* mmsError};
 
 %include "cstring.i"
 %cstring_bounded_output(char *buffer, 1024);
@@ -41,6 +70,7 @@ DataObject* toDataObject(ModelNode * MN)
 %include "iso_connection_parameters.h"
 %include "iec61850_common.h"
 %include "mms_value.h"
+%include "mms_type_spec.h"
 %include "mms_common.h"
 %include "iec61850_model.h"
 %include "iec61850_server.h"
@@ -59,6 +89,12 @@ DataAttribute* toDataAttribute(DataObject *);
 DataAttribute* toDataAttribute(ModelNode *);
 DataObject* toDataObject(ModelNode *);
 char* toCharP(void *);
+MmsValue* MmsConnection_readMultipleVariables(
+    MmsConnection self,
+    MmsError* mmsError,
+    const char* domainId,
+    PyObject *items
+);
 
 /* Goose Subscriber section */
 %{
